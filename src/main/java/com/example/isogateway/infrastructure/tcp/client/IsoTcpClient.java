@@ -16,16 +16,21 @@ public class IsoTcpClient {
     private final MessageFactory<IsoMessage> isoMessageFactory;
 
     public IsoMessage send(IsoMessage message) throws IOException, java.text.ParseException {
+
         try (Socket socket = new Socket("localhost", 9999)) {
+
             message.write(socket.getOutputStream(), 2);
-            
+
+
             DataInputStream in = new DataInputStream(socket.getInputStream());
+
+
             if (socket.isConnected()) {
-                int length = in.readShort(); 
+                int length = in.readShort();
                 byte[] data = new byte[length];
                 in.readFully(data);
-                
-                return isoMessageFactory.parseMessage(data, 0);
+
+                return isoMessageFactory.parseMessage(data, 0); // Faz o parse
             }
             return null;
         }
