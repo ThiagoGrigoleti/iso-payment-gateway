@@ -14,7 +14,6 @@
 	<artifactId>iso-payment-gateway</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>iso-payment-gateway</name>
-	<description>Gateway de Pagamento JSON para ISO8583</description>
 
 	<properties>
 		<java.version>17</java.version>
@@ -33,16 +32,10 @@
 		</dependency>
 
 		<dependency>
-            <groupId>net.sf.j8583</groupId>
-            <artifactId>j8583</artifactId>
-            <version>1.17.0</version>
-        </dependency>
-        
-        <dependency>
-            <groupId>io.netty</groupId>
-            <artifactId>netty-all</artifactId>
-            <version>4.1.104.Final</version>
-        </dependency>
+			<groupId>net.sf.j8583</groupId>
+			<artifactId>j8583</artifactId>
+			<version>1.17.0</version>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
