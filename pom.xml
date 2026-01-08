@@ -33,10 +33,10 @@
 		</dependency>
 
 		<dependency>
-			<groupId>com.github.kpavlov.j8583</groupId>
-			<artifactId>j8583</artifactId>
-			<version>1.17.0</version>
-		</dependency>
+            <groupId>net.sf.j8583</groupId>
+            <artifactId>j8583</artifactId>
+            <version>1.17.0</version>
+        </dependency>
         
         <dependency>
             <groupId>io.netty</groupId>
