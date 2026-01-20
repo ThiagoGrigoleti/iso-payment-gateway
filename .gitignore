@@ -7,12 +7,12 @@ target/
 *.ipr
 *.iws
 .vscode/
+*.swp
+*.swo
 
 # Maven
-.mvn/
 !.mvn/wrapper/maven-wrapper.jar
-mvnw
-mvnw.cmd
+!.mvn/wrapper/maven-wrapper.properties
 
 # Log files
 *.log
@@ -31,6 +31,7 @@ application-local.yml
 
 # Package files
 *.jar
+!.mvn/wrapper/*.jar
 *.war
 *.ear
 *.zip
@@ -43,3 +44,6 @@ rebel.xml
 # Lombok
 .apt_generated/
 .apt_generated_tests/
+
+# Docker
+docker-compose.override.yml

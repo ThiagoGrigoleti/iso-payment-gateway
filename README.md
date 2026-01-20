@@ -1,52 +1,134 @@
-ISO 8583 Payment Gateway
+# ISO 8583 Payment Gateway
 
-Este projeto implementa um Gateway de Pagamentos de alta performance projetado para realizar a interoperabilidade entre sistemas modernos (API REST/JSON) e sistemas bancários legados baseados no protocolo ISO 8583 (TCP/Binário).
+A high-performance Payment Gateway that bridges modern REST/JSON APIs with legacy banking systems using the ISO 8583 protocol over TCP/Binary.
 
-O sistema gerencia o ciclo de vida transacional, incluindo conversão de mensagens, persistência de dados, comunicação assíncrona via sockets e tratamento de concorrência.
+## Features
 
-Visão Geral do Projeto
+- **REST API** - JSON-based payment processing endpoints
+- **ISO 8583 Protocol** - Full message construction and parsing (MTI 0200/0210)
+- **TCP Communication** - Raw socket communication with banking networks
+- **Transaction Persistence** - PostgreSQL storage with full audit trail
+- **Retry Logic** - Configurable retry mechanism for bank communication
+- **Timeout Handling** - Connection and read timeout configuration
+- **Card Masking** - PCI-DSS compliant card number masking
+- **Metrics** - Transaction statistics and monitoring endpoints
+- **Swagger UI** - Interactive API documentation
 
-O objetivo principal é demonstrar competências em engenharia de software backend para sistemas críticos, abordando:
+## Tech Stack
 
-* Protocolos de Baixo Nível: Implementação de cliente TCP para comunicação direta via Socket, sem uso de camadas HTTP para a transação bancária.
-* Manipulação de Dados Binários: Conversão e empacotamento de mensagens no padrão ISO 8583 (Bitmaps e Data Elements).
-* Concorrência e IO: Gerenciamento de conexões e leitura de streams de dados.
-* Integridade de Dados: Persistência transacional utilizando PostgreSQL com rastreabilidade de requisição e resposta.
+| Component | Technology |
+|-----------|------------|
+| Language | Java 17 |
+| Framework | Spring Boot 3.2 |
+| ISO Protocol | j8583 |
+| Database | PostgreSQL 15 |
+| Documentation | OpenAPI 3 / Swagger |
+| Containerization | Docker |
 
-Arquitetura
+## Project Structure
 
-O fluxo de dados segue o padrão:
+```
+src/main/java/com/example/isogateway/
+├── api/
+│   ├── controller/          # REST endpoints
+│   └── dto/                 # Request/Response objects
+├── config/                  # Configuration classes
+├── core/
+│   ├── domain/              # JPA entities
+│   ├── iso/                 # ISO 8583 configuration
+│   └── repository/          # Data access layer
+├── exception/               # Exception handling
+├── infrastructure/
+│   └── tcp/                 # TCP client and mock server
+├── service/                 # Business logic
+└── util/                    # Utility classes
+```
 
-1. Client Application: Envia requisição HTTP POST (JSON).
-2. Payment Controller: Recebe e valida o payload.
-3. Service Layer: Converte o DTO para entidade de banco de dados (estado PENDENTE) e transforma os dados para objeto ISO 8583.
-4. TCP Client: Estabelece conexão com o servidor bancário (Mock) e trafega os bytes.
-5. Database: Atualiza o estado da transação com a resposta do banco (APROVADO/RECUSADO) e armazena os metadados.
+## API Endpoints
 
-Stack Tecnológico
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/payments` | Process a new payment |
+| GET | `/api/v1/payments/{id}` | Get transaction by ID |
+| GET | `/api/v1/payments/stan/{stan}` | Get transaction by STAN |
+| GET | `/api/v1/payments` | List transactions (paginated) |
+| GET | `/api/v1/health` | Health check |
+| GET | `/api/v1/metrics` | Transaction metrics |
+| GET | `/swagger-ui.html` | API Documentation |
 
-Linguagem: Java 17
-Framework: Spring Boot 3 (Web, Data JPA)
-Protocolo Bancário: j8583 (ISO 8583 Parser/Builder)
-Banco de Dados: PostgreSQL 15
-Containerização: Docker & Docker Compose
-Testes: JUnit 5 & Mockito
-Documentação: Swagger UI (OpenAPI)
+## Quick Start
 
-Pré-requisitos
+### Using Docker Compose
 
-Java JDK 17+
-Docker e Docker Compose instalados
-Maven (opcional, wrapper incluído)
-
-Instalação e Execução
-
-1. Inicialização do Ambiente (Banco de Dados)
-Execute o comando abaixo na raiz do projeto para subir o container do PostgreSQL:
+```bash
 docker-compose up -d
-2. Execução da Aplicação
-Utilize o Maven Wrapper para iniciar a aplicação. Este comando irá compilar o projeto, rodar os testes unitários e iniciar o servidor na porta 8080.
+```
+
+### Manual Setup
+
+1. Start PostgreSQL:
+```bash
+docker run -d --name isobank-db \
+  -e POSTGRES_DB=isobank \
+  -e POSTGRES_USER=admin \
+  -e POSTGRES_PASSWORD=admin \
+  -p 5432:5432 \
+  postgres:15-alpine
+```
+
+2. Run the application:
+```bash
 ./mvnw spring-boot:run
+```
+
+## Configuration
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `gateway.bank.host` | localhost | Bank server host |
+| `gateway.bank.port` | 9999 | Bank server port |
+| `gateway.bank.connection-timeout-ms` | 5000 | Connection timeout |
+| `gateway.bank.read-timeout-ms` | 30000 | Read timeout |
+| `gateway.bank.max-retries` | 3 | Max retry attempts |
+
+## Sample Request
+
+```bash
+curl -X POST http://localhost:8080/api/v1/payments \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cardNumber": "4111111111111111",
+    "amount": 150.00
+  }'
+```
+
+## Sample Response
+
+```json
+{
+  "transactionId": 1,
+  "stan": "000001",
+  "status": "APPROVED",
+  "responseCode": "00",
+  "responseDescription": "Approved",
+  "cardNumberMasked": "411111******1111",
+  "amount": 150.00,
+  "currency": "BRL",
+  "authorizationCode": "123456",
+  "processingTimeMs": 245,
+  "timestamp": "2026-01-20T10:30:00"
+}
+```
+
+## Running Tests
+
+```bash
+./mvnw test
+```
+
+## License
+
+MIT
 
 Nota: A aplicação iniciará simultaneamente um Mock Server TCP na porta 9999 para simular a instituição financeira.
 
