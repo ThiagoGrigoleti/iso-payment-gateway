@@ -9,31 +9,19 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@Tag(name = "System", description = "Health check and metrics")
+@Tag(name = "Monitoring", description = "Transaction statistics and business metrics")
 public class HealthController {
 
     private final MetricsService metricsService;
 
-    @GetMapping("/health")
-    @Operation(summary = "Health check endpoint")
-    public ResponseEntity<Map<String, Object>> health() {
-        Map<String, Object> health = new HashMap<>();
-        health.put("status", "UP");
-        health.put("timestamp", LocalDateTime.now());
-        health.put("service", "iso-payment-gateway");
-        return ResponseEntity.ok(health);
-    }
-
-    @GetMapping("/metrics")
-    @Operation(summary = "Transaction metrics")
-    public ResponseEntity<Map<String, Object>> metrics() {
+    @GetMapping("/stats")
+    @Operation(summary = "Transaction statistics", description = "Returns transaction counts and average processing time")
+    public ResponseEntity<Map<String, Object>> getTransactionStats() {
         return ResponseEntity.ok(metricsService.getMetrics());
     }
 }
