@@ -30,7 +30,7 @@ public class IsoTcpClient {
                 byte[] data = new byte[length];
                 in.readFully(data);
 
-                return isoMessageFactory.parseMessage(data, 0); // Faz o parse
+                return isoMessageFactory.parseMessage(data, 0);
             }
             return null;
         }

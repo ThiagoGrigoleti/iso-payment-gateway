@@ -4,6 +4,7 @@ import com.solab.iso8583.IsoMessage;
 import com.solab.iso8583.IsoType;
 import com.solab.iso8583.MessageFactory;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j; // Log profissional
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -12,6 +13,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.concurrent.Executors;
 
+@Slf4j 
 @Component
 @RequiredArgsConstructor
 public class MockBankServer implements CommandLineRunner {
@@ -22,13 +24,13 @@ public class MockBankServer implements CommandLineRunner {
     public void run(String... args) {
         Executors.newSingleThreadExecutor().execute(() -> {
             try (ServerSocket server = new ServerSocket(9999)) {
-                System.out.println("MOCK BANK OUVINDO NA PORTA 9999");
+                log.info("=== MOCK BANK STARTADO NA PORTA 9999 ===");
                 while (true) {
                     Socket client = server.accept();
                     handle(client);
                 }
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("Erro fatal no servidor do banco", e);
             }
         });
     }
@@ -36,7 +38,6 @@ public class MockBankServer implements CommandLineRunner {
     private void handle(Socket client) {
         try {
             DataInputStream in = new DataInputStream(client.getInputStream());
-
             int length = in.readShort();
             byte[] data = new byte[length];
             in.readFully(data);
@@ -44,7 +45,7 @@ public class MockBankServer implements CommandLineRunner {
             IsoMessage request = isoMessageFactory.parseMessage(data, 0);
 
             if (request != null) {
-                System.out.println(">> BANCO RECEBEU: " + request.debugString());
+                log.info(">> BANCO RECEBEU: {}", request.debugString());
 
                 IsoMessage response = isoMessageFactory.createResponse(request);
                 response.setType(0x210);
@@ -54,7 +55,7 @@ public class MockBankServer implements CommandLineRunner {
             }
             client.close();
         } catch (Exception e) {
-
+            log.error("Erro processando transação", e);
         }
     }
 }

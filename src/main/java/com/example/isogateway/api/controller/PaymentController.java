@@ -2,11 +2,9 @@ package com.example.isogateway.api.controller;
 
 import com.example.isogateway.api.dto.TransactionRequest;
 import com.example.isogateway.service.PaymentProcessorService;
+import jakarta.validation.Valid; 
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -16,7 +14,7 @@ public class PaymentController {
     private final PaymentProcessorService service;
 
     @PostMapping
-    public String createPayment(@RequestBody TransactionRequest request) {
+    public String createPayment(@RequestBody @Valid TransactionRequest request) { 
         return service.process(request);
     }
 }

@@ -1,0 +1,45 @@
+# Compiled class files
+target/
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+
+# Maven
+.mvn/
+!.mvn/wrapper/maven-wrapper.jar
+mvnw
+mvnw.cmd
+
+# Log files
+*.log
+logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Spring Boot
+*.pid
+
+# Application properties with sensitive data
+application-local.properties
+application-local.yml
+
+# Package files
+*.jar
+*.war
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# JRebel
+rebel.xml
+
+# Lombok
+.apt_generated/
+.apt_generated_tests/
