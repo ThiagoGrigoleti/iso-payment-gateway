@@ -12,7 +12,7 @@ import java.util.Arrays;
 
 @Getter
 @Setter
-public class TransactionRequest implements Closeable, AutoCloseable {
+public class TransactionRequest implements Closeable {
 
     @NotNull(message = "Card number is required")
     private char[] cardNumber;

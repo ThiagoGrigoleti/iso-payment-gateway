@@ -23,7 +23,6 @@ import java.util.Date;
 public class ReversalService {
 
     private static final int MTI_REVERSAL = 0x400;
-    private static final int MTI_REVERSAL_RESPONSE = 0x410;
 
     private final MessageFactory<IsoMessage> isoMessageFactory;
     private final IsoTcpClient isoTcpClient;

@@ -3,7 +3,7 @@ package com.example.isogateway.security;
 import java.io.Closeable;
 import java.util.Arrays;
 
-public final class SecureCardNumber implements Closeable, AutoCloseable {
+public final class SecureCardNumber implements Closeable {
 
     private final char[] value;
     private volatile boolean wiped = false;
@@ -60,15 +60,6 @@ public final class SecureCardNumber implements Closeable, AutoCloseable {
     @Override
     public void close() {
         wipe();
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        try {
-            wipe();
-        } finally {
-            super.finalize();
-        }
     }
 
     @Override

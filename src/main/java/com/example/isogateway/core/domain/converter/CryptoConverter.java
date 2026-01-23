@@ -3,8 +3,6 @@ package com.example.isogateway.core.domain.converter;
 import jakarta.annotation.PostConstruct;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +18,6 @@ import java.util.Base64;
 @Component
 public class CryptoConverter implements AttributeConverter<String, String> {
 
-    private static final Logger log = LoggerFactory.getLogger(CryptoConverter.class);
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
