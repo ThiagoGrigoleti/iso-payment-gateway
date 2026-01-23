@@ -42,12 +42,43 @@ services:
       SPRING_DATA_REDIS_PORT: 6379
       GATEWAY_BANK_HOST: host.docker.internal
       GATEWAY_BANK_PORT: 9999
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-ProductionKey32BytesForAES256!}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
 
+  prometheus:
+    image: prom/prometheus:v2.48.0
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:10.2.2
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+
 volumes:
   postgres_data:
   redis_data:
+  prometheus_data:
+  grafana_data:

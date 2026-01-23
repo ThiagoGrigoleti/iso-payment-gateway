@@ -4,7 +4,9 @@ import com.example.isogateway.config.BankConnectionProperties;
 import com.example.isogateway.exception.BankConnectionException;
 import com.solab.iso8583.IsoMessage;
 import com.solab.iso8583.MessageFactory;
-import lombok.RequiredArgsConstructor;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
@@ -13,14 +15,31 @@ import java.net.SocketTimeoutException;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class IsoTcpClient {
 
     private final MessageFactory<IsoMessage> isoMessageFactory;
     private final BankConnectionProperties connectionProperties;
     private final ConnectionPool connectionPool;
+    private final Timer tcpTimer;
 
+    public IsoTcpClient(MessageFactory<IsoMessage> isoMessageFactory,
+                        BankConnectionProperties connectionProperties,
+                        ConnectionPool connectionPool,
+                        MeterRegistry meterRegistry) {
+        this.isoMessageFactory = isoMessageFactory;
+        this.connectionProperties = connectionProperties;
+        this.connectionPool = connectionPool;
+        this.tcpTimer = Timer.builder("gateway.tcp.request.duration")
+                .description("Time spent on TCP communication with bank")
+                .register(meterRegistry);
+    }
+
+    @CircuitBreaker(name = "bankConnection", fallbackMethod = "sendFallback")
     public IsoMessage send(IsoMessage message, String stan) {
+        return tcpTimer.record(() -> doSendWithRetry(message, stan));
+    }
+
+    private IsoMessage doSendWithRetry(IsoMessage message, String stan) {
         int attempts = 0;
         Exception lastException = null;
 
@@ -92,5 +111,11 @@ public class IsoTcpClient {
 
         connection.touch();
         return response;
+    }
+
+    @SuppressWarnings("unused")
+    private IsoMessage sendFallback(IsoMessage message, String stan, Exception e) {
+        log.error("Circuit breaker open for bank connection, STAN={}", stan);
+        throw new BankConnectionException("Bank connection unavailable (circuit breaker open)", stan, e);
     }
 }

@@ -1,37 +1,60 @@
 package com.example.isogateway.infrastructure.tcp.client;
 
 import com.example.isogateway.config.BankConnectionProperties;
-import lombok.RequiredArgsConstructor;
+import com.example.isogateway.config.SslProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.DestroyMode;
 import org.apache.commons.pool2.PooledObject;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
 @Slf4j
-@RequiredArgsConstructor
 public class ConnectionFactory extends BasePooledObjectFactory<PooledConnection> {
 
     private final BankConnectionProperties connectionProperties;
+    private final SslProperties sslProperties;
+    private final SSLContext sslContext;
+
+    public ConnectionFactory(BankConnectionProperties connectionProperties,
+                             SslProperties sslProperties,
+                             SSLContext sslContext) {
+        this.connectionProperties = connectionProperties;
+        this.sslProperties = sslProperties;
+        this.sslContext = sslContext;
+    }
 
     @Override
     public PooledConnection create() throws Exception {
-        Socket socket = new Socket();
-        socket.setTcpNoDelay(true);
-        socket.setKeepAlive(true);
-        socket.setSoTimeout(connectionProperties.getReadTimeoutMs());
+        Socket socket;
 
-        socket.connect(
-                new InetSocketAddress(connectionProperties.getHost(), connectionProperties.getPort()),
-                connectionProperties.getConnectionTimeoutMs()
-        );
-
-        log.debug("Created new pooled connection to {}:{}",
-                connectionProperties.getHost(), connectionProperties.getPort());
+        if (sslProperties.isEnabled()) {
+            SSLSocket sslSocket = (SSLSocket) sslContext.getSocketFactory()
+                    .createSocket(connectionProperties.getHost(), connectionProperties.getPort());
+            sslSocket.setSoTimeout(connectionProperties.getReadTimeoutMs());
+            sslSocket.setTcpNoDelay(true);
+            sslSocket.setKeepAlive(true);
+            sslSocket.startHandshake();
+            socket = sslSocket;
+            log.debug("Created new SSL pooled connection to {}:{}",
+                    connectionProperties.getHost(), connectionProperties.getPort());
+        } else {
+            socket = new Socket();
+            socket.setTcpNoDelay(true);
+            socket.setKeepAlive(true);
+            socket.setSoTimeout(connectionProperties.getReadTimeoutMs());
+            socket.connect(
+                    new InetSocketAddress(connectionProperties.getHost(), connectionProperties.getPort()),
+                    connectionProperties.getConnectionTimeoutMs()
+            );
+            log.debug("Created new plaintext pooled connection to {}:{}",
+                    connectionProperties.getHost(), connectionProperties.getPort());
+        }
 
         return new PooledConnection(socket);
     }

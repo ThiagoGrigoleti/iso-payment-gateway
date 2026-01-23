@@ -2,10 +2,12 @@ package com.example.isogateway.infrastructure.tcp.client;
 
 import com.example.isogateway.config.BankConnectionProperties;
 import com.example.isogateway.config.ConnectionPoolProperties;
+import com.example.isogateway.config.SslProperties;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -23,7 +25,7 @@ class ConnectionPoolTest {
     private AtomicInteger connectionCount;
 
     @BeforeEach
-    void setUp() throws IOException {
+    void setUp() throws Exception {
         connectionCount = new AtomicInteger(0);
         serverSocket = new ServerSocket(0);
         int port = serverSocket.getLocalPort();
@@ -60,7 +62,10 @@ class ConnectionPoolTest {
         poolProperties.setMaxWaitMillis(1000);
         poolProperties.setTestOnBorrow(false);
 
-        connectionPool = new ConnectionPool(bankProperties, poolProperties);
+        SslProperties sslProperties = new SslProperties();
+        sslProperties.setEnabled(false);
+
+        connectionPool = new ConnectionPool(bankProperties, poolProperties, sslProperties, SSLContext.getDefault());
         connectionPool.init();
     }
 

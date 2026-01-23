@@ -2,6 +2,7 @@ package com.example.isogateway.infrastructure.tcp.client;
 
 import com.example.isogateway.config.BankConnectionProperties;
 import com.example.isogateway.config.ConnectionPoolProperties;
+import com.example.isogateway.config.SslProperties;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,8 @@ import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.stereotype.Component;
 
+import javax.net.ssl.SSLContext;
+
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -17,6 +20,8 @@ public class ConnectionPool {
 
     private final BankConnectionProperties bankProperties;
     private final ConnectionPoolProperties poolProperties;
+    private final SslProperties sslProperties;
+    private final SSLContext sslContext;
 
     private GenericObjectPool<PooledConnection> pool;
 
@@ -31,15 +36,16 @@ public class ConnectionPool {
         config.setTestOnReturn(poolProperties.isTestOnReturn());
         config.setTestWhileIdle(poolProperties.isTestWhileIdle());
         config.setTimeBetweenEvictionRuns(java.time.Duration.ofMillis(poolProperties.getTimeBetweenEvictionRunsMillis()));
-        config.setMinEvictableIdleTime(java.time.Duration.ofMillis(poolProperties.getMinEvictableIdleTimeMillis()));
+        config.setMinEvictableIdleDuration(java.time.Duration.ofMillis(poolProperties.getMinEvictableIdleTimeMillis()));
         config.setJmxEnabled(true);
         config.setJmxNamePrefix("BankConnectionPool");
 
-        ConnectionFactory factory = new ConnectionFactory(bankProperties);
+        ConnectionFactory factory = new ConnectionFactory(bankProperties, sslProperties, sslContext);
         pool = new GenericObjectPool<>(factory, config);
 
-        log.info("Connection pool initialized: maxTotal={}, minIdle={}, maxIdle={}",
-                poolProperties.getMaxTotal(), poolProperties.getMinIdle(), poolProperties.getMaxIdle());
+        log.info("Connection pool initialized: maxTotal={}, minIdle={}, maxIdle={}, ssl={}",
+                poolProperties.getMaxTotal(), poolProperties.getMinIdle(), poolProperties.getMaxIdle(),
+                sslProperties.isEnabled());
     }
 
     @PreDestroy

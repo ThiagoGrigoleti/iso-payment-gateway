@@ -37,7 +37,7 @@ class IdempotencyServiceTest {
         properties = new IdempotencyProperties();
         properties.setTtlSeconds(3600);
         properties.setKeyPrefix("test:");
-        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        lenient().when(redisTemplate.opsForValue()).thenReturn(valueOperations);
         idempotencyService = new IdempotencyService(redisTemplate, properties);
     }
 

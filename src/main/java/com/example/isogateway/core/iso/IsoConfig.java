@@ -35,6 +35,21 @@ public class IsoConfig {
         template0210.setValue(39, "00", IsoType.ALPHA, 2);
         factory.addMessageTemplate(template0210);
 
+        IsoMessage template0800 = new IsoMessage();
+        template0800.setType(0x800);
+        template0800.setValue(7, "0101000000", IsoType.DATE10, 10);
+        template0800.setValue(11, "000000", IsoType.NUMERIC, 6);
+        template0800.setValue(70, "301", IsoType.NUMERIC, 3);
+        factory.addMessageTemplate(template0800);
+
+        IsoMessage template0810 = new IsoMessage();
+        template0810.setType(0x810);
+        template0810.setValue(7, "0101000000", IsoType.DATE10, 10);
+        template0810.setValue(11, "000000", IsoType.NUMERIC, 6);
+        template0810.setValue(39, "00", IsoType.ALPHA, 2);
+        template0810.setValue(70, "301", IsoType.NUMERIC, 3);
+        factory.addMessageTemplate(template0810);
+
         return factory;
     }
 }

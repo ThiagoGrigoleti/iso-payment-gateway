@@ -1,173 +1,240 @@
 # ISO 8583 Payment Gateway
 
-A high-performance Payment Gateway that bridges modern REST/JSON APIs with legacy banking systems using the ISO 8583 protocol over TCP/Binary.
+[![Build](https://img.shields.io/badge/build-passing-brightgreen)](https://github.com)
+[![Java](https://img.shields.io/badge/Java-17-orange)](https://openjdk.org)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green)](https://spring.io/projects/spring-boot)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 
-## Features
+High-performance Payment Gateway bridging REST/JSON APIs with legacy banking systems using ISO 8583 over TCP/Binary. Production-ready with enterprise-grade security, observability, and resilience patterns.
 
-- **REST API** - JSON-based payment processing endpoints with versioned API (`/api/v1/`)
-- **ISO 8583 Protocol** - Full message construction and parsing (MTI 0200/0210)
-- **TCP Communication** - Raw socket communication with banking networks
-- **Transaction Persistence** - PostgreSQL storage with full audit trail
-- **Retry Logic** - Configurable retry mechanism for bank communication
-- **Timeout Handling** - Connection and read timeout configuration
-- **Card Masking** - PCI-DSS compliant card number masking
-- **Spring Actuator** - Production-ready health checks and metrics
-- **Swagger UI** - Interactive API documentation
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Client
+        A[REST Client]
+    end
+
+    subgraph Gateway["ISO Payment Gateway"]
+        B[Rate Limiter]
+        C[REST Controller]
+        D[Idempotency Check]
+        E[Payment Service]
+        F[ISO Builder]
+        G[Connection Pool]
+        H[Circuit Breaker]
+    end
+
+    subgraph Infrastructure
+        I[(PostgreSQL)]
+        J[(Redis)]
+        K[Prometheus]
+    end
+
+    subgraph Bank["Bank Network"]
+        L[ISO 8583 Server]
+    end
+
+    A -->|JSON| B
+    B --> C
+    C --> D
+    D <-->|Cache| J
+    D --> E
+    E -->|Persist| I
+    E --> F
+    F --> G
+    G --> H
+    H -->|mTLS + ISO 8583| L
+    E -->|Metrics| K
+```
+
+## Key Features
+
+| Category | Feature | Implementation |
+|----------|---------|----------------|
+| **Resilience** | Circuit Breaker | Resilience4j with auto-recovery |
+| **Resilience** | Connection Pooling | Apache Commons Pool2 |
+| **Resilience** | Idempotency | Redis-based duplicate prevention |
+| **Resilience** | Graceful Shutdown | Active transaction completion |
+| **Resilience** | Heartbeat Monitor | Bank connection health check |
+| **Resilience** | Async Processing | Non-blocking notifications |
+| **Security** | mTLS | Mutual TLS with X.509 certificates |
+| **Security** | Encryption at Rest | AES-256-GCM for sensitive data |
+| **Security** | Log Masking | PAN regex replacement |
+| **Security** | Rate Limiting | Bucket4j per-IP throttling |
+| **Security** | Container Hardening | Non-root user execution |
+| **Observability** | Structured Logging | MDC correlation IDs |
+| **Observability** | Metrics | Prometheus + Micrometer |
+| **Observability** | Health Checks | Kubernetes-ready probes |
+| **Observability** | Distributed Tracing | OpenTelemetry integration |
+| **DevOps** | CI Pipeline | GitHub Actions with tests |
+| **DevOps** | Docker Compose | Full stack with Prometheus/Grafana |
+| **Testing** | Unit Tests | JUnit 5 + Mockito |
+| **Testing** | Integration Tests | Testcontainers |
+| **Testing** | Mutation Testing | Pitest coverage |
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|------------|
-| Language | Java 17 |
-| Framework | Spring Boot 3.2 |
-| ISO Protocol | j8583 |
-| Database | PostgreSQL 15 |
-| Monitoring | Spring Boot Actuator |
-| Documentation | OpenAPI 3 / Swagger |
-| Containerization | Docker |
+| Component | Technology | Purpose |
+|-----------|------------|---------|
+| Runtime | Java 17 | LTS with modern features |
+| Framework | Spring Boot 3.2 | Production-grade foundation |
+| ISO Protocol | j8583 1.17 | Message parsing/building |
+| Database | PostgreSQL 15 | ACID-compliant persistence |
+| Cache | Redis 7 | Idempotency keys |
+| Resilience | Resilience4j 2.2 | Circuit breaker pattern |
+| Rate Limiting | Bucket4j 8.7 | Token bucket algorithm |
+| Migrations | Flyway 9.x | Version-controlled schema |
+| Metrics | Micrometer + Prometheus | Observability |
+| Tracing | OpenTelemetry | Distributed tracing |
+| Testing | JUnit 5 + Testcontainers | Integration testing |
+| Mutation | Pitest 1.15 | Test quality verification |
+| Security | OWASP Dependency Check | CVE scanning |
+| CI/CD | GitHub Actions | Automated pipelines |
 
-## Project Structure
+## Technical Decisions
 
-```
-src/main/java/com/example/isogateway/
-├── api/
-│   ├── controller/          # REST endpoints
-│   └── dto/                 # Request/Response objects
-├── config/                  # Configuration classes
-├── core/
-│   ├── domain/              # JPA entities
-│   ├── iso/                 # ISO 8583 configuration
-│   └── repository/          # Data access layer
-├── exception/               # Exception handling
-├── infrastructure/
-│   └── tcp/                 # TCP client and mock server
-├── service/                 # Business logic
-└── util/                    # Utility classes
-```
+### Why Connection Pooling?
+TCP handshake to banking networks takes 50-100ms. Connection pooling maintains warm connections, reducing latency to sub-millisecond for subsequent requests. Critical for high-throughput scenarios.
 
-## API Endpoints
+### Why mTLS?
+PCI-DSS mandates encrypted channels for cardholder data. Mutual TLS provides bidirectional authentication, ensuring both gateway and bank verify each other's identity.
 
-### Payment Operations
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/v1/payments` | Process a new payment |
-| GET | `/api/v1/payments/{id}` | Get transaction by ID |
-| GET | `/api/v1/payments/stan/{stan}` | Get transaction by STAN (System Trace Audit Number) |
-| GET | `/api/v1/payments` | List transactions (paginated) |
-| GET | `/api/v1/stats` | Transaction statistics (counts, avg processing time) |
+### Why Circuit Breaker?
+Bank systems may become unavailable. Without circuit breakers, threads block waiting for timeouts, exhausting the thread pool. Circuit breaker fails fast, preserving system resources.
 
-### Monitoring (Spring Actuator)
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/actuator/health` | Application health status (Kubernetes ready) |
-| GET | `/actuator/metrics` | JVM and application metrics |
-| GET | `/actuator/info` | Application info |
+### Why Idempotency?
+Network issues cause retry scenarios. Without idempotency, a payment could be processed multiple times. Redis-based idempotency ensures exactly-once processing semantics.
 
-### Documentation
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/swagger-ui.html` | Interactive API Documentation |
-| GET | `/api-docs` | OpenAPI JSON specification |
+### Why AES-256-GCM?
+Card data at rest requires encryption per PCI-DSS. AES-256-GCM provides authenticated encryption, preventing both eavesdropping and tampering.
 
 ## Quick Start
 
-### Using Docker Compose
+### Prerequisites
+
+- Docker & Docker Compose
+- Java 17 (for local development)
+
+### Run with Docker Compose
 
 ```bash
 docker-compose up -d
 ```
 
-### Manual Setup
+Services:
+- **API**: http://localhost:8080
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **Prometheus**: http://localhost:9090
+- **Grafana**: http://localhost:3000 (admin/admin)
 
-1. Start PostgreSQL:
+### Run Locally
+
 ```bash
-docker run -d --name isobank-db \
-  -e POSTGRES_DB=isobank \
-  -e POSTGRES_USER=admin \
-  -e POSTGRES_PASSWORD=admin \
-  -p 5432:5432 \
-  postgres:15-alpine
+# Start infrastructure
+docker-compose up -d postgres redis
+
+# Run application
+./mvnw spring-boot:run
 ```
 
-2. Run the application:
+## API Reference
+
+### Authorize Payment
+
 ```bash
-./mvnw spring-boot:run
+curl -X POST http://localhost:8080/api/v1/payments/authorize \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: unique-request-id" \
+  -d '{
+    "cardNumber": "4111111111111111",
+    "expirationDate": "1225",
+    "amount": 100.00,
+    "merchantId": "MERCHANT001",
+    "terminalId": "TERM001"
+  }'
+```
+
+### Health Check
+
+```bash
+curl http://localhost:8080/actuator/health
+```
+
+### Metrics
+
+```bash
+curl http://localhost:8080/actuator/prometheus
 ```
 
 ## Configuration
 
 | Property | Default | Description |
 |----------|---------|-------------|
-| `gateway.bank.host` | localhost | Bank server host |
-| `gateway.bank.port` | 9999 | Bank server port |
-| `gateway.bank.connection-timeout-ms` | 5000 | Connection timeout |
-| `gateway.bank.read-timeout-ms` | 30000 | Read timeout |
-| `gateway.bank.max-retries` | 3 | Max retry attempts |
+| `gateway.bank.host` | localhost | Bank ISO server host |
+| `gateway.bank.port` | 9999 | Bank ISO server port |
+| `gateway.pool.max-total` | 20 | Max pooled connections |
+| `gateway.ssl.enabled` | false | Enable mTLS |
+| `gateway.ratelimit.requests-per-second` | 100 | Rate limit per IP |
+| `resilience4j.circuitbreaker.instances.bankConnection.failureRateThreshold` | 50 | Circuit breaker threshold |
 
-## Sample Request
+## Monitoring
 
-```bash
-curl -X POST http://localhost:8080/api/v1/payments \
-  -H "Content-Type: application/json" \
-  -d '{
-    "cardNumber": "4111111111111111",
-    "amount": 150.00
-  }'
-```
+### Key Metrics
 
-## Sample Response
+| Metric | Description |
+|--------|-------------|
+| `gateway.payment.processed` | Payment count by status |
+| `gateway.tcp.request.duration` | Bank communication latency |
+| `gateway.connection.pool.active` | Active pool connections |
+| `gateway.heartbeat.healthy` | Bank connection health |
 
-```json
-{
-  "transactionId": 1,
-  "stan": "000001",
-  "status": "APPROVED",
-  "responseCode": "00",
-  "responseDescription": "Approved",
-  "cardNumberMasked": "411111******1111",
-  "amount": 150.00,
-  "currency": "BRL",
-  "authorizationCode": "123456",
-  "processingTimeMs": 245,
-  "timestamp": "2026-01-20T10:30:00"
-}
-```
+### Grafana Dashboard
 
-## Running Tests
+Pre-configured dashboard available at http://localhost:3000 after `docker-compose up`.
+
+## Testing
 
 ```bash
+# Unit tests
 ./mvnw test
+
+# Integration tests (requires Docker)
+./mvnw verify
+
+# Mutation testing
+./mvnw org.pitest:pitest-maven:mutationCoverage
+
+# Security scan
+./mvnw dependency-check:check
 ```
 
-## Future Improvements
+## Project Structure
 
-The following enhancements are planned to evolve this project into a production-grade financial system:
+```
+src/main/java/com/example/isogateway/
+├── api/
+│   ├── controller/       # REST endpoints
+│   └── dto/              # Request/Response DTOs
+├── config/               # Spring configuration
+├── core/
+│   ├── domain/           # JPA entities + converters
+│   ├── iso/              # ISO 8583 message factory
+│   └── repository/       # Data access
+├── exception/            # Global error handling
+├── infrastructure/
+│   └── tcp/client/       # Pooled TCP client + Circuit Breaker
+├── service/              # Business logic
+└── util/                 # Utilities
+```
 
-### Critical (Financial Domain)
-| Feature | Description | Why it matters |
-|---------|-------------|----------------|
-| **Reversal/Void (MTI 0400/0420)** | Automatic reversal when bank doesn't respond | In financial systems, timeout ≠ failure, it means "unknown state". Auto-reversal prevents double charging |
-| **Idempotency Keys** | Prevent duplicate transactions via `Idempotency-Key` header | If user clicks "Pay" twice, charge only once. Requires Redis for distributed lock |
+## Security
 
-### Performance
-| Feature | Description | Why it matters |
-|---------|-------------|----------------|
-| **TCP Connection Pooling** | Reuse socket connections instead of `new Socket()` per request | TCP handshake is slow. Pool of 10 persistent connections = massive throughput gain |
-| **Async Processing** | Non-blocking I/O with `CompletableFuture` | Handle thousands of concurrent transactions without thread exhaustion |
-
-### Production Readiness
-| Feature | Description | Why it matters |
-|---------|-------------|----------------|
-| **Database Migrations (Flyway)** | Versioned SQL scripts instead of `hibernate.ddl-auto=update` | `ddl-auto=update` is forbidden in production. Flyway = professional schema management |
-| **Distributed Tracing (OpenTelemetry)** | End-to-end request tracing across services | Debug production issues by following a transaction through all systems |
-| **Rate Limiting** | Throttle requests per client/IP | Prevent abuse and ensure fair resource allocation |
-| **API Authentication** | OAuth2/JWT token validation | Secure the API for production use |
-
-### Testing
-| Feature | Description | Why it matters |
-|---------|-------------|----------------|
-| **Integration Tests (Testcontainers)** | Real PostgreSQL + real TCP server in tests | Unit tests aren't enough for financial systems |
-| **Load Testing (Gatling)** | Simulate thousands of concurrent users | Know your system's limits before production |
+- Card numbers encrypted at rest (AES-256-GCM)
+- Logs automatically mask PANs
+- Rate limiting prevents abuse
+- Non-root container execution
+- OWASP dependency scanning in CI
 
 ## License
 

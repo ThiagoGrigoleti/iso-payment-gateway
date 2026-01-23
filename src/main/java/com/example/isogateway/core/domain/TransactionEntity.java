@@ -1,5 +1,6 @@
 package com.example.isogateway.core.domain;
 
+import com.example.isogateway.core.domain.converter.CryptoConverter;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
@@ -22,7 +23,8 @@ public class TransactionEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 19)
+    @Convert(converter = CryptoConverter.class)
+    @Column(nullable = false, length = 255)
     private String cardNumberMasked;
 
     @Column(nullable = false, precision = 15, scale = 2)
