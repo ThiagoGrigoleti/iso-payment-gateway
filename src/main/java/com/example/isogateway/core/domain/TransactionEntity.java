@@ -73,6 +73,15 @@ public class TransactionEntity {
     @Column(length = 2048)
     private String rawResponse;
 
+    @Column
+    private Long merchantId;
+
+    @Column(length = 6)
+    private String originalStan;
+
+    @Column(length = 6)
+    private String reversalStan;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

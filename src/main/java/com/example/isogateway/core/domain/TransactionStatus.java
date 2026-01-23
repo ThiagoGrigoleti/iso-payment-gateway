@@ -6,5 +6,7 @@ public enum TransactionStatus {
     DECLINED,
     ERROR,
     TIMEOUT,
-    REVERSED
+    REVERSED,
+    REVERSAL_FAILED,
+    UNKNOWN
 }

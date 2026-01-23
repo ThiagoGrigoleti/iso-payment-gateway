@@ -9,7 +9,6 @@ import com.example.isogateway.core.repository.TransactionRepository;
 import com.example.isogateway.exception.BankConnectionException;
 import com.example.isogateway.exception.DuplicateTransactionException;
 import com.example.isogateway.infrastructure.tcp.client.IsoTcpClient;
-import com.example.isogateway.util.CardMaskUtil;
 import com.example.isogateway.util.TransactionIdGenerator;
 import com.solab.iso8583.IsoMessage;
 import com.solab.iso8583.IsoType;
@@ -29,6 +28,7 @@ public class PaymentProcessorService {
     private final MessageFactory<IsoMessage> isoMessageFactory;
     private final IsoTcpClient isoTcpClient;
     private final TransactionRepository repository;
+    private final ReversalService reversalService;
 
     @Transactional
     public TransactionResponse process(TransactionRequest request) {
@@ -107,19 +107,21 @@ public class PaymentProcessorService {
                     );
                 }
             } else {
-                entity.setStatus(TransactionStatus.ERROR);
+                entity.setStatus(TransactionStatus.UNKNOWN);
                 entity.setErrorMessage("Null response from bank");
                 repository.save(entity);
+                reversalService.triggerReversal(entity, "No response from bank");
 
                 log.error("Null response from bank STAN={}", stan);
                 return TransactionResponse.error(stan, "No response from bank");
             }
 
         } catch (BankConnectionException e) {
-            entity.setStatus(TransactionStatus.TIMEOUT);
+            entity.setStatus(TransactionStatus.UNKNOWN);
             entity.setErrorMessage(e.getMessage());
             entity.setProcessingTimeMs(System.currentTimeMillis() - startTime);
             repository.save(entity);
+            reversalService.triggerReversal(entity, "Bank connection timeout");
 
             log.error("Bank connection failed STAN={}: {}", stan, e.getMessage());
             return TransactionResponse.timeout(stan);

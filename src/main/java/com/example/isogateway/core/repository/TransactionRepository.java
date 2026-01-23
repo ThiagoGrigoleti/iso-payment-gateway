@@ -28,6 +28,8 @@ public interface TransactionRepository extends JpaRepository<TransactionEntity, 
             @Param("end") LocalDateTime end
     );
 
+    List<TransactionEntity> findByCreatedAtBetween(LocalDateTime start, LocalDateTime end);
+
     @Query("SELECT COUNT(t) FROM TransactionEntity t WHERE t.status = :status AND t.createdAt >= :since")
     long countByStatusSince(@Param("status") TransactionStatus status, @Param("since") LocalDateTime since);
 
