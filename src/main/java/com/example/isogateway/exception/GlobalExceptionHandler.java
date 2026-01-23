@@ -46,6 +46,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
     }
 
+    @ExceptionHandler(IdempotencyConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleIdempotencyConflict(IdempotencyConflictException ex) {
+        log.warn("Idempotency conflict: {}", ex.getIdempotencyKey());
+        Map<String, Object> error = new HashMap<>();
+        error.put("error", "IDEMPOTENCY_CONFLICT");
+        error.put("message", ex.getMessage());
+        error.put("idempotencyKey", ex.getIdempotencyKey());
+        error.put("timestamp", LocalDateTime.now());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
