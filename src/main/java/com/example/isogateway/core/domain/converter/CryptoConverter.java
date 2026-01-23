@@ -1,29 +1,60 @@
 package com.example.isogateway.core.domain.converter;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
 import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 
 @Converter
 @Component
 public class CryptoConverter implements AttributeConverter<String, String> {
 
+    private static final Logger log = LoggerFactory.getLogger(CryptoConverter.class);
     private static final String ALGORITHM = "AES/GCM/NoPadding";
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
+    private static final int REQUIRED_KEY_LENGTH = 32;
 
-    private static byte[] encryptionKey;
+    private static volatile byte[] encryptionKey;
+    private static final Object KEY_LOCK = new Object();
 
-    @Value("${gateway.security.encryption-key:DefaultKey32BytesForAES256!!!}")
-    public void setEncryptionKey(String key) {
-        encryptionKey = key.getBytes();
+    @Value("${gateway.security.encryption-key:}")
+    private String keyFromConfig;
+
+    @PostConstruct
+    public void init() {
+        synchronized (KEY_LOCK) {
+            String envKey = System.getenv("ENCRYPTION_KEY");
+            String keyToUse = (envKey != null && !envKey.isBlank()) ? envKey : keyFromConfig;
+
+            if (keyToUse == null || keyToUse.isBlank()) {
+                throw new IllegalStateException(
+                    "Encryption key not configured. Set ENCRYPTION_KEY environment variable.");
+            }
+
+            byte[] keyBytes = keyToUse.getBytes(StandardCharsets.UTF_8);
+            if (keyBytes.length != REQUIRED_KEY_LENGTH) {
+                throw new IllegalStateException(
+                    String.format("Encryption key must be exactly %d bytes (current: %d bytes)",
+                        REQUIRED_KEY_LENGTH, keyBytes.length));
+            }
+
+            encryptionKey = Arrays.copyOf(keyBytes, keyBytes.length);
+            Arrays.fill(keyBytes, (byte) 0);
+            log.info("Encryption key configured (source: {})",
+                (envKey != null && !envKey.isBlank()) ? "ENVIRONMENT" : "CONFIG");
+        }
     }
 
     @Override

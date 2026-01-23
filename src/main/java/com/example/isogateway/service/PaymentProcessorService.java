@@ -34,11 +34,11 @@ public class PaymentProcessorService {
     public TransactionResponse process(TransactionRequest request) {
         String stan = TransactionIdGenerator.generateStan();
         String rrn = TransactionIdGenerator.generateRrn();
-        String maskedCard = CardMaskUtil.mask(request.getCardNumber());
+        String maskedCard = request.getCardNumberMasked();
         long startTime = System.currentTimeMillis();
 
         log.info("Processing transaction STAN={} Card={} Amount={}",
-                stan, CardMaskUtil.maskForLog(request.getCardNumber()), request.getAmount());
+                stan, maskedCard, request.getAmount());
 
         if (repository.existsByStan(stan)) {
             throw new DuplicateTransactionException(stan);
@@ -132,12 +132,14 @@ public class PaymentProcessorService {
 
             log.error("Transaction processing error STAN={}", stan, e);
             return TransactionResponse.error(stan, "Processing error: " + e.getMessage());
+        } finally {
+            request.wipeCardNumber();
         }
     }
 
     private IsoMessage buildIsoMessage(TransactionRequest request, String stan, String rrn) {
         IsoMessage m = isoMessageFactory.newMessage(0x200);
-        m.setValue(IsoFieldMap.PAN, request.getCardNumber(), IsoType.LLVAR, 0);
+        m.setValue(IsoFieldMap.PAN, request.getCardNumberAsString(), IsoType.LLVAR, 0);
         m.setValue(IsoFieldMap.PROCESSING_CODE, "000000", IsoType.NUMERIC, 6);
         m.setValue(IsoFieldMap.AMOUNT,
                 String.format("%012d", request.getAmount().movePointRight(2).longValue()),
