@@ -43,18 +43,24 @@ public class CryptoConverter implements AttributeConverter<String, String> {
                     "Encryption key not configured. Set ENCRYPTION_KEY environment variable.");
             }
 
-            byte[] keyBytes = keyToUse.getBytes(StandardCharsets.UTF_8);
-            if (keyBytes.length != REQUIRED_KEY_LENGTH) {
-                throw new IllegalStateException(
-                    String.format("Encryption key must be exactly %d bytes (current: %d bytes)",
-                        REQUIRED_KEY_LENGTH, keyBytes.length));
-            }
-
-            encryptionKey = Arrays.copyOf(keyBytes, keyBytes.length);
-            Arrays.fill(keyBytes, (byte) 0);
-            log.info("Encryption key configured (source: {})",
-                (envKey != null && !envKey.isBlank()) ? "ENVIRONMENT" : "CONFIG");
+            initializeKey(keyToUse);
         }
+    }
+
+    void setKeyFromConfig(String key) {
+        this.keyFromConfig = key;
+    }
+
+    void initializeKey(String key) {
+        byte[] keyBytes = key.getBytes(StandardCharsets.UTF_8);
+        if (keyBytes.length != REQUIRED_KEY_LENGTH) {
+            throw new IllegalStateException(
+                String.format("Encryption key must be exactly %d bytes (current: %d bytes)",
+                    REQUIRED_KEY_LENGTH, keyBytes.length));
+        }
+
+        encryptionKey = Arrays.copyOf(keyBytes, keyBytes.length);
+        Arrays.fill(keyBytes, (byte) 0);
     }
 
     @Override

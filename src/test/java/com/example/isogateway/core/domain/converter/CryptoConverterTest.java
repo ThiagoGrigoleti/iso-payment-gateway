@@ -12,7 +12,7 @@ class CryptoConverterTest {
     @BeforeEach
     void setUp() {
         converter = new CryptoConverter();
-        converter.setEncryptionKey("12345678901234567890123456789012");
+        converter.initializeKey("12345678901234567890123456789012");
     }
 
     @Test
