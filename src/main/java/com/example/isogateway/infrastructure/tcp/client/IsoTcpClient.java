@@ -8,10 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.io.DataInputStream;
 import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.SocketTimeoutException;
 
 @Slf4j
@@ -21,6 +18,7 @@ public class IsoTcpClient {
 
     private final MessageFactory<IsoMessage> isoMessageFactory;
     private final BankConnectionProperties connectionProperties;
+    private final ConnectionPool connectionPool;
 
     public IsoMessage send(IsoMessage message, String stan) {
         int attempts = 0;
@@ -28,18 +26,33 @@ public class IsoTcpClient {
 
         while (attempts < connectionProperties.getMaxRetries()) {
             attempts++;
+            PooledConnection connection = null;
+            boolean invalidate = false;
+
             try {
-                return doSend(message, stan);
+                connection = connectionPool.borrowConnection();
+                return doSend(connection, message, stan);
             } catch (SocketTimeoutException e) {
                 log.warn("Timeout on attempt {} for STAN {}", attempts, stan);
                 lastException = e;
+                invalidate = true;
             } catch (IOException e) {
                 log.warn("Connection error on attempt {} for STAN {}: {}", attempts, stan, e.getMessage());
                 lastException = e;
+                invalidate = true;
             } catch (Exception e) {
                 log.error("Unexpected error on attempt {} for STAN {}", attempts, stan, e);
                 lastException = e;
+                invalidate = true;
                 break;
+            } finally {
+                if (connection != null) {
+                    if (invalidate) {
+                        connectionPool.invalidateConnection(connection);
+                    } else {
+                        connectionPool.returnConnection(connection);
+                    }
+                }
             }
 
             if (attempts < connectionProperties.getMaxRetries()) {
@@ -59,32 +72,25 @@ public class IsoTcpClient {
         );
     }
 
-    private IsoMessage doSend(IsoMessage message, String stan) throws IOException, java.text.ParseException {
-        try (Socket socket = new Socket()) {
-            socket.connect(
-                    new InetSocketAddress(connectionProperties.getHost(), connectionProperties.getPort()),
-                    connectionProperties.getConnectionTimeoutMs()
-            );
-            socket.setSoTimeout(connectionProperties.getReadTimeoutMs());
+    private IsoMessage doSend(PooledConnection connection, IsoMessage message, String stan)
+            throws IOException, java.text.ParseException {
 
-            log.debug("Connected to bank {}:{} for STAN {}",
-                    connectionProperties.getHost(), connectionProperties.getPort(), stan);
+        log.debug("Sending message to bank for STAN {} using pooled connection", stan);
 
-            message.write(socket.getOutputStream(), 2);
-            socket.getOutputStream().flush();
+        message.write(connection.getOutputStream(), 2);
+        connection.getOutputStream().flush();
 
-            DataInputStream in = new DataInputStream(socket.getInputStream());
-            int length = in.readShort();
-            byte[] data = new byte[length];
-            in.readFully(data);
+        int length = connection.getInputStream().readShort();
+        byte[] data = new byte[length];
+        connection.getInputStream().readFully(data);
 
-            IsoMessage response = isoMessageFactory.parseMessage(data, 0);
+        IsoMessage response = isoMessageFactory.parseMessage(data, 0);
 
-            if (response != null) {
-                log.debug("Received response for STAN {}: MTI {}", stan, String.format("%04x", response.getType()));
-            }
-
-            return response;
+        if (response != null) {
+            log.debug("Received response for STAN {}: MTI {}", stan, String.format("%04x", response.getType()));
         }
+
+        connection.touch();
+        return response;
     }
 }

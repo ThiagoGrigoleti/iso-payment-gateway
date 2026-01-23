@@ -2,6 +2,7 @@ package com.example.isogateway.service;
 
 import com.example.isogateway.core.domain.TransactionStatus;
 import com.example.isogateway.core.repository.TransactionRepository;
+import com.example.isogateway.infrastructure.tcp.client.ConnectionPool;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,7 @@ import java.util.Map;
 public class MetricsService {
 
     private final TransactionRepository repository;
+    private final ConnectionPool connectionPool;
 
     public Map<String, Object> getMetrics() {
         LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
@@ -36,9 +38,18 @@ public class MetricsService {
 
         Double avgProcessingTime = repository.averageProcessingTimeSince(lastHour);
 
+        Map<String, Object> poolMetrics = new HashMap<>();
+        poolMetrics.put("active", connectionPool.getNumActive());
+        poolMetrics.put("idle", connectionPool.getNumIdle());
+        poolMetrics.put("borrowed", connectionPool.getBorrowedCount());
+        poolMetrics.put("returned", connectionPool.getReturnedCount());
+        poolMetrics.put("created", connectionPool.getCreatedCount());
+        poolMetrics.put("destroyed", connectionPool.getDestroyedCount());
+
         metrics.put("lastHour", lastHourMetrics);
         metrics.put("lastDay", lastDayMetrics);
         metrics.put("averageProcessingTimeMs", avgProcessingTime != null ? avgProcessingTime : 0);
+        metrics.put("connectionPool", poolMetrics);
         metrics.put("timestamp", LocalDateTime.now());
 
         return metrics;
